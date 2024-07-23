@@ -107,33 +107,29 @@ export default function UserFormComponent(props: { userId?: number, editionMode?
   }
 
   const createUser = async (payload: CustomerFormData) => {
-    try {
-      const res = await fetchHelper.post(ROUTES_API.users, payload)
-      console.log('Response:', res);
-      setDialogContent(GENERIC_MODAL_CONTENT["USER_CREATE_SUCCESS"])
-    } catch (error) {
-      console.log('Err => ', error)
+    const res = await fetchHelper.post(ROUTES_API.users, payload)
+    console.log('Response:', res)
+
+    if (res.error) {
       setDialogContent(GENERIC_MODAL_CONTENT["USER_CREATE_ERROR"])
-    } finally {
-      closeLoadingScreen()
-      console.log('isDialogopej => ', isDialogOpen)
-      openDialog()
-      console.log('isDialogopej => ', isDialogOpen)
+    } else {
+      setDialogContent(GENERIC_MODAL_CONTENT["USER_CREATE_SUCCESS"])
     }
+    openDialog()
+    closeLoadingScreen()
   }
 
   const updateUser = async (payload: CustomerFormData) => {
-    try {
-      const res = await fetchHelper.patch(ROUTES_API.users + '/' + userId, payload)
-      console.log('Response => ', res)
-      setDialogContent(GENERIC_MODAL_CONTENT["USER_EDIT_SUCCESS"])
-    } catch (error) {
-      console.log('Err => ', error)
+    const res = await fetchHelper.patch(ROUTES_API.users + '/' + userId, payload)
+    console.log('Response => ', res)
+
+    if (res.error) {
       setDialogContent(GENERIC_MODAL_CONTENT["USER_EDIT_ERROR"])
-    } finally {
-      closeLoadingScreen()
-      openDialog()
+    } else {
+      setDialogContent(GENERIC_MODAL_CONTENT["USER_EDIT_SUCCESS"])
     }
+    openDialog()
+    closeLoadingScreen()
   }
 
   return (
