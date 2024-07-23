@@ -1,43 +1,92 @@
 "use client"
 
 import * as z from 'zod';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLoadingScreenStore } from '@/state/store/loadingScreenStore';
+import { FetchHelper } from '@/utils/helpers/fetch';
+import { ROUTES_API } from '@/utils/constants/routes';
+import { useGenericModalStore } from '@/state/store/genericModalStore';
+import { GENERIC_MODAL_CONTENT } from '@/utils/constants/labels';
+import GenericModalComponent from './GenericModalComponent';
 
 const schema = z.object({
-  name: z.string().nonempty('El nombre es requerido'),
-  lastname: z.string().nonempty('El apellido es requerido'),
-  middlename: z.string().optional(),
+  first_name: z.string().min(2, 'El nombre es requerido'),
+  last_name: z.string().min(2, 'El apellido es requerido'),
+  middle_name: z.string().optional(),
   email: z.string().email('El email no es válido'),
-  role: z.string().nonempty('El rol es requerido'),
+  role_id: z.string().min(1, 'El rol es requerido'),
 });
 
 type CustomerFormData = z.infer<typeof schema>
 
-export default function UserFormComponent() {
+export default function UserFormComponent(props: { userId?: number, editionMode?: boolean }) {
+  const fetchHelper = new FetchHelper()
+  const { editionMode, userId } = props
+
   const [formData, setFormData] = useState<CustomerFormData>({
-    name: '',
-    lastname: '',
-    middlename: '',
+    first_name: '',
+    last_name: '',
+    middle_name: '',
     email: '',
-    role: '',
+    role_id: '',
   })
+
+  useEffect(() => {
+    if (!userId) return
+
+    const fetchData = async () => {
+      openLoadingScreen()
+      try {
+        const res = await fetchHelper.get(ROUTES_API.users + '/' + userId)
+        console.log('Response:', res);
+        const { data } = res.data
+        setFormData({
+          email: data.email,
+          last_name: data.last_name,
+          first_name: data.first_name,
+          middle_name: data.middle_name,
+          role_id: data.role_id
+        })
+
+      } catch (error) {
+        console.log('fetchData err:', error);
+      } finally {
+        closeLoadingScreen()
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const [errors, setErrors] = useState<Partial<CustomerFormData>>({})
 
+  const [isDialogOpen, openDialog, closeDialog, setDialogContent] = useGenericModalStore(state => [
+    state.isDialogOpen,
+    state.openDialog,
+    state.closeDialog,
+    state.setDialogContent
+  ])
+
+  const [isLoadingScreenOpen, openLoadingScreen, closeLoadingScreen] = useLoadingScreenStore((state) => [
+    state.isLoadingScreenOpen,
+    state.openLoadingScreen,
+    state.closeLoadingScreen
+  ])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    console.log(name, value)
     setFormData({
       ...formData,
       [name]: value,
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    openLoadingScreen()
 
-    // Validar los datos del formulario
     const result = schema.safeParse(formData)
+    console.log(formData)
 
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -45,58 +94,96 @@ export default function UserFormComponent() {
         fieldErrors[err.path[0]] = err.message;
       })
       setErrors(fieldErrors)
+      closeLoadingScreen()
     } else {
       setErrors({})
-      console.log(formData)
+
+      if (!editionMode) {
+        await createUser(formData)
+      } else {
+        await updateUser(formData)
+      }
+    }
+  }
+
+  const createUser = async (payload: CustomerFormData) => {
+    try {
+      const res = await fetchHelper.post(ROUTES_API.users, payload)
+      console.log('Response:', res);
+      setDialogContent(GENERIC_MODAL_CONTENT["USER_CREATE_SUCCESS"])
+    } catch (error) {
+      console.log('Err => ', error)
+      setDialogContent(GENERIC_MODAL_CONTENT["USER_CREATE_ERROR"])
+    } finally {
+      closeLoadingScreen()
+      console.log('isDialogopej => ', isDialogOpen)
+      openDialog()
+      console.log('isDialogopej => ', isDialogOpen)
+    }
+  }
+
+  const updateUser = async (payload: CustomerFormData) => {
+    try {
+      const res = await fetchHelper.patch(ROUTES_API.users + '/' + userId, payload)
+      console.log('Response => ', res)
+      setDialogContent(GENERIC_MODAL_CONTENT["USER_EDIT_SUCCESS"])
+    } catch (error) {
+      console.log('Err => ', error)
+      setDialogContent(GENERIC_MODAL_CONTENT["USER_EDIT_ERROR"])
+    } finally {
+      closeLoadingScreen()
+      openDialog()
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <GenericModalComponent />
+
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
-        <h2 className="text-2xl font-bold mb-6 text-center">Editar/Crear Cliente</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">{editionMode ? 'Editar' : 'Crear'} Cliente</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="first_name" className="block text-sm font-medium text-gray-700">
               Nombre
             </label>
             <input
               type="text"
-              id="name"
-              name="name"
-              value={formData.name}
+              id="first_name"
+              name="first_name"
+              value={formData.first_name}
               onChange={handleChange}
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+            {errors.first_name && <p className="text-red-500 text-sm mt-1">{errors.first_name}</p>}
           </div>
           <div>
-            <label htmlFor="lastname" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="last_name" className="block text-sm font-medium text-gray-700">
               Apellido Paterno
             </label>
             <input
               type="text"
               id="lastname"
-              name="lastname"
-              value={formData.lastname}
+              name="last_name"
+              value={formData.last_name}
               onChange={handleChange}
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
-            {errors.lastname && <p className="text-red-500 text-sm mt-1">{errors.lastname}</p>}
+            {errors.last_name && <p className="text-red-500 text-sm mt-1">{errors.last_name}</p>}
           </div>
           <div>
-            <label htmlFor="middlename" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="middle_name" className="block text-sm font-medium text-gray-700">
               Apellido Materno (opcional)
             </label>
             <input
               type="text"
-              id="middlename"
-              name="middlename"
-              value={formData.middlename}
+              id="middle_name"
+              name="middle_name"
+              value={formData.middle_name}
               onChange={handleChange}
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
-            {errors.middlename && <p className="text-red-500 text-sm mt-1">{errors.middlename}</p>}
+            {errors.middle_name && <p className="text-red-500 text-sm mt-1">{errors.middle_name}</p>}
           </div>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -113,22 +200,22 @@ export default function UserFormComponent() {
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="role_id" className="block text-sm font-medium text-gray-700">
               Rol
             </label>
             <select
-              id="role"
-              name="role"
-              value={formData.role}
+              id="role_id"
+              name="role_id"
+              value={formData.role_id}
               onChange={handleChange}
               className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             >
               <option value="">Seleccione un rol</option>
-              <option value="admin">Admin</option>
-              <option value="user">User</option>
-              <option value="guest">Guest</option>
+              <option value={1}>Superadmin</option>
+              <option value={2}>Admin</option>
+              <option value={3}>Customer</option>
             </select>
-            {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role}</p>}
+            {errors.role_id && <p className="text-red-500 text-sm mt-1">{errors.role_id}</p>}
           </div>
           <div className="flex justify-end">
             <button
