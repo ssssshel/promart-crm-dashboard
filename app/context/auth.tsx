@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 interface IAuthProvider {
   // token: string;
   auth: boolean;
+  userId?: number
 }
 
 // Se crea el contexto y su contenido
@@ -17,7 +18,7 @@ export function AuthProvider({ children }: any) {
   const [cookies, setCookie, removeCookie] = useCookies(['sessionInfo']);
   const [authPayload, setAuthPayload] = useState<IAuthProvider>({
     // token: '',
-    auth: false
+    auth: false,
   });
 
   useEffect(() => {
@@ -35,7 +36,8 @@ export function AuthProvider({ children }: any) {
       })
     } else {
       setAuthPayload({
-        auth: true
+        auth: true,
+        userId: sessionInfo.userId
       })
     }
 

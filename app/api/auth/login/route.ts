@@ -30,6 +30,7 @@ export async function POST(req: NextRequest, res: NextResponse) {
 
     const decodedToken = jwt.decode(accessToken);
     const sessionInfo = {
+      userId: <number>(<any>decodedToken).user_id,
       roleId: <number>(<any>decodedToken).role_id,
       exp: <number>(<any>decodedToken).exp
     }
