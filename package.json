@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.6",
-    "cookie": "^0.6.0",
+    "cookie": "^0.7.0",
     "jsonwebtoken": "^9.0.2",
     "next": "14.2.5",
     "next-cookie": "^2.8.0",
